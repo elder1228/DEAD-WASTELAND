@@ -1,4 +1,4 @@
-# DEAD-WASTELAND
+
 # 𝐃𝐄𝐀𝐃 𝐖𝐀𝐒𝐓𝐄𝐋𝐀𝐍𝐃 🧟‍♂️🏜️
 **Versão:** 1.0 | **Desenvolvedor:** Elder
 **Gênero:** Sobrevivência Zumbi / Logística Pesada / Construção
