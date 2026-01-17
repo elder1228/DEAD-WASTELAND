@@ -1,1 +1,21 @@
-!
+[LOGIC_PROFESSIONS_INTEGRATION]
+
+// Exemplo da interação Patrulheiro + Sucateiro
+IF (Ally_Type == "Patrulheiro") {
+    GET_LOCATION_FROM (Sucateiro_Intelligence);
+    START_PATROL_ROUTE (14:00 TO 16:00);
+    IF (TIME == 16:00) { 
+        RETURN_TO_BASE_FAST(); // Fugir dos corredores
+    }
+}
+
+// Exemplo da Fazenda
+IF (Ally_Type == "Fazendeiro") {
+    MAINTAIN_ENTITY ("Carroça");
+    REGEN_STAMINA ("Cavalo_Real");
+}
+
+// Exemplo do Armeiro
+IF (Ally_Type == "Armeiro") {
+    CRAFT_ITEM (Ammo_Type, Scrap_Amount);
+}
