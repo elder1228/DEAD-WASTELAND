@@ -1,0 +1,25 @@
+[UI_MENU_RS_SYSTEM]
+
+// Configuração Visual (Tema Elder)
+MENU_BACKGROUND = RGBA(0, 0, 0, 150)
+MENU_HIGHLIGHT = RGBA(0, 120, 255, 255)
+
+// Estrutura de Navegação
+IF (KEY_R_PRESSED && KEY_S_PRESSED) {
+    OPEN_MENU("DEAD WASTELAND - RÁDIO & STATUS");
+    
+    ADD_ITEM("Status do Líder", "Vida: {HP} | Stamina: {STAM}");
+    ADD_ITEM("Recursos da Base", "Comida: {F} | Peças: {P} | Munição: {M}");
+    
+    // Submenu de Profissões
+    FOR EACH (Profession in Base_NPCs) {
+        DISPLAY_NAME(Profession.Type);
+        DISPLAY_STATUS(Profession.CurrentTask);
+    }
+}
+
+// Lógica de Comando Rápido
+IF (MENU_SELECTED == "Chamar Reforço") {
+    TRIGGER_EVENT("Spawn_Patrol_Ally", Player_Position);
+    UI_NOTIFY("Patrulheiros a caminho da sua localização! 🔵");
+}
