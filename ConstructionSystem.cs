@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using GTA;
 using GTA.Math;
 
@@ -10,14 +9,17 @@ namespace DeadWastelandXbox
         private bool isBuilding = false;
         private Prop currentPreviewProp = null;
         private float currentHeading = 0.0f;
+        private int selectedIndex = 0;
 
-        // Lista de Hashes dos Objetos Estilo "Gamersamuka"
-        private string[] availableProps = new string[]
+        // Hashes oficiais de construção do Simple Zombies
+        private string[] buildables = new string[]
         {
-            "prop_barier_conc_01a", // Barreira de Concreto
-            "prop_sandbag_01",      // Sacos de Areia
-            "prop_skid_tent_01",    // Barraca
-            "prop_beach_fire"       // Fogueira
+            "prop_barier_conc_01a", // Barreira Concreto
+            "prop_sandbag_01",      // Bloco de Areia (Sandbag)
+            "prop_skid_tent_01",    // Barraca de Acampamento
+            "prop_beach_fire",      // Fogueira (Camp Fire)
+            "prop_fncsec_01a",      // Cerca/Grade de Proteção
+            "prop_gate_airport_01"  // Portão de Metal para a Base
         };
 
         public ConstructionSystem()
@@ -27,20 +29,23 @@ namespace DeadWastelandXbox
 
         private void OnTick(object sender, EventArgs e)
         {
-            // Atalho Teclado: F10  |  Controle: Menu Dedicado
-            if (Game.IsKeyPressed(System.Windows.Forms.Keys.F10))
+            // F10 no Teclado ou LB + RB no Controle para Abrir Menu de Construção
+            bool toggleKey = Game.IsKeyPressed(System.Windows.Forms.Keys.F10) || 
+                            (Game.IsControlPressed(0, Control.SelectWeapon) && Game.IsControlPressed(0, Control.CharacterWheel));
+
+            if (toggleKey)
             {
                 isBuilding = !isBuilding;
 
                 if (isBuilding)
                 {
-                    UI.Notify("~g~[F10] Modo Construção ATIVADO!");
-                    SpawnPreview("prop_barier_conc_01a");
+                    UI.Notify("~g~[CONSTRUÇÃO] Modo de Base Ativado!");
+                    SpawnPreview(buildables[selectedIndex]);
                 }
                 else
                 {
                     CancelBuilding();
-                    UI.Notify("~r~[F10] Modo Construção DESATIVADO.");
+                    UI.Notify("~r~[CONSTRUÇÃO] Modo de Base Fechado.");
                 }
                 Script.Wait(500);
             }
@@ -48,27 +53,45 @@ namespace DeadWastelandXbox
             if (isBuilding && currentPreviewProp != null)
             {
                 Ped player = Game.Player.Character;
+                Vector3 targetPos = player.Position + player.ForwardVector * 3.5f;
                 
-                // Posiciona o objeto 3 metros à frente do jogador
-                Vector3 targetPos = player.Position + player.ForwardVector * 3.0f;
                 currentPreviewProp.Position = targetPos;
                 currentPreviewProp.Heading = currentHeading;
 
-                // Gira o objeto com Q / E
-                if (Game.IsKeyPressed(System.Windows.Forms.Keys.Q)) currentHeading -= 3.0f;
-                if (Game.IsKeyPressed(System.Windows.Forms.Keys.E)) currentHeading += 3.0f;
+                // Rotação: Q / E no Teclado
+                if (Game.IsKeyPressed(System.Windows.Forms.Keys.Q)) currentHeading -= 4.0f;
+                if (Game.IsKeyPressed(System.Windows.Forms.Keys.E)) currentHeading += 4.0f;
 
-                // Tecla ENTER confirma a construção no mapa
+                // Trocar Estrutura: Setas Esquerda / Direita
+                if (Game.IsKeyPressed(System.Windows.Forms.Keys.Left))
+                {
+                    selectedIndex = (selectedIndex - 1 + buildables.Length) % buildables.Length;
+                    SwitchProp();
+                    Script.Wait(200);
+                }
+                if (Game.IsKeyPressed(System.Windows.Forms.Keys.Right))
+                {
+                    selectedIndex = (selectedIndex + 1) % buildables.Length;
+                    SwitchProp();
+                    Script.Wait(200);
+                }
+
+                // ENTER ou Botão X confirma a posição
                 if (Game.IsKeyPressed(System.Windows.Forms.Keys.Enter))
                 {
-                    // Deixa a estrutura fixa com colisão física
                     currentPreviewProp.IsPersistent = true;
-                    currentPreviewProp = null; // Libera para a próxima
-                    UI.Notify("~g~Estrutura posicionada com sucesso!");
+                    currentPreviewProp = null;
+                    UI.Notify("~g~[ESTRUTURA] Fixada com sucesso na Base!");
                     isBuilding = false;
                     Script.Wait(500);
                 }
             }
+        }
+
+        private void SwitchProp()
+        {
+            if (currentPreviewProp != null) currentPreviewProp.Delete();
+            SpawnPreview(buildables[selectedIndex]);
         }
 
         private void SpawnPreview(string modelName)
@@ -79,7 +102,7 @@ namespace DeadWastelandXbox
 
             if (model.IsInCdImage && model.IsValid)
             {
-                currentPreviewProp = World.CreateProp(model, player.Position + player.ForwardVector * 3.0f, false, false);
+                currentPreviewProp = World.CreateProp(model, player.Position + player.ForwardVector * 3.5f, false, false);
             }
         }
 
