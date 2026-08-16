@@ -1,23 +1,25 @@
-#include "natives.h"
+#include "generated_offsets.h"
+#include <cstdint>
 
 namespace DeadWastelandXbox 
 {
     enum Profession { NONE, MECHANIC, ENGINEER, SENTINEL, SCRAPPER, GUNSMITH, FARMER_A, FARMER_B, PATROL, MEDIC, COOK };
 
-    void ApplyProfessionEffect(Ped npc, Profession prof) 
+    void ApplyProfessionEffect(uintptr_t npc, Profession prof) 
     {
         switch (prof) 
         {
             case SENTINEL:
-                WEAPON::GIVE_DELAYED_WEAPON_TO_PED(npc, GAMEPLAY::GET_HASH_KEY("WEAPON_CARBINERIFLE"), 999, TRUE);
-                PED::SET_PED_COMBAT_ATTRIBUTES(npc, 5, TRUE); // Sempre em guarda
+                InvokeNative(HASH_GET_HASH_KEY, "WEAPON_CARBINERIFLE", nullptr); // Hash é retornado no registrador, simplificado aqui
+                InvokeNative(HASH_GIVE_DELAYED_WEAPON_TO_PED, npc, 0x97EA53F8, 999, TRUE); // Hash do Carbine Rifle
+                InvokeNative(HASH_SET_PED_COMBAT_ATTRIBUTES, npc, 5, TRUE);
                 break;
             case MEDIC:
-                PED::SET_PED_MAX_HEALTH(npc, 200);
-                ENTITY::SET_ENTITY_HEALTH(npc, 200);
+                InvokeNative(HASH_SET_PED_MAX_HEALTH, npc, 200);
+                InvokeNative(HASH_SET_ENTITY_HEALTH, npc, 200, 0);
                 break;
             case PATROL:
-                PED::SET_PED_COMBAT_MOVEMENT(npc, 3); // Movimento ostensivo
+                InvokeNative(HASH_SET_PED_COMBAT_MOVEMENT, npc, 3);
                 break;
             default:
                 break;
