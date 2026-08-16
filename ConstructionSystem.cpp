@@ -1,77 +1,97 @@
-#include "natives.h"
-#include "types.h"
+#include "generated_offsets.h"
+#include <cstdint>
 
 namespace DeadWastelandXbox 
 {
+    struct Vector3 { float x, y, z; };
+
     bool g_buildMode = false;
-    Object g_previewObj = 0;
-    Hash g_currentPropHash = 0;
+    uintptr_t g_previewObj = 0;
+    uint32_t g_currentPropHash = 0;
     float g_currentHeading = 0.0f;
 
     void ToggleBuildMode() 
     {
         g_buildMode = !g_buildMode;
-        Ped playerPed = PLAYER::PLAYER_PED_ID();
+        uintptr_t playerPed = *(uintptr_t*)PLAYER_PED_PTR;
 
         if (g_buildMode) 
         {
-            // Barreira de concreto padrão
-            g_currentPropHash = GAMEPLAY::GET_HASH_KEY("prop_barier_conc_05c");
-            STREAMING::REQUEST_MODEL(g_currentPropHash);
-            while (!STREAMING::HAS_MODEL_LOADED(g_currentPropHash)) WAIT(0);
+            InvokeNative(HASH_GET_HASH_KEY, "prop_barier_conc_05c", &g_currentPropHash);
+            InvokeNative(HASH_REQUEST_MODEL, g_currentPropHash);
+            
+            bool loaded = false;
+            while (!loaded) {
+                InvokeNative(HASH_HAS_MODEL_LOADED, g_currentPropHash, &loaded);
+                Sleep(0); // Substitui WAIT(0)
+            }
 
-            Vector3 pCoords = ENTITY::GET_ENTITY_COORDS(playerPed, TRUE);
-            g_previewObj = OBJECT::CREATE_OBJECT(g_currentPropHash, pCoords.x, pCoords.y + 3.0f, pCoords.z, FALSE, FALSE, FALSE);
-            ENTITY::SET_ENTITY_ALPHA(g_previewObj, 150, FALSE); // Transparente para preview
-            ENTITY::SET_ENTITY_COLLISION(g_previewObj, FALSE, FALSE);
+            Vector3 pCoords;
+            InvokeNative(HASH_GET_ENTITY_COORDS, playerPed, TRUE, &pCoords);
+            
+            InvokeNative(HASH_CREATE_OBJECT, g_currentPropHash, pCoords.x, pCoords.y + 3.0f, pCoords.z, FALSE, FALSE, FALSE, &g_previewObj);
+            InvokeNative(HASH_SET_ENTITY_ALPHA, g_previewObj, 150, FALSE);
+            InvokeNative(HASH_SET_ENTITY_COLLISION, g_previewObj, FALSE, FALSE);
 
-            UI::_SET_NOTIFICATION_TEXT_ENTRY("STRING");
-            UI::_ADD_TEXT_COMPONENT_STRING("~b~[CONSTRUÇÃO] Modo Ativado (F10 / LB+RB)");
-            UI::_DRAW_NOTIFICATION(FALSE, TRUE);
+            InvokeNative(HASH_SET_NOTIFICATION_TEXT_ENTRY, "STRING");
+            InvokeNative(HASH_ADD_TEXT_COMPONENT_STRING, "~b~[CONSTRUÇÃO] Modo Ativado (F10 / LB+RB)");
+            InvokeNative(HASH_DRAW_NOTIFICATION, FALSE, TRUE);
         } 
-        else if (ENTITY::DOES_ENTITY_EXIST(g_previewObj)) 
+        else if (g_previewObj != 0) 
         {
-            OBJECT::DELETE_OBJECT(&g_previewObj);
+            InvokeNative(HASH_DELETE_OBJECT, &g_previewObj);
             g_previewObj = 0;
         }
     }
 
     void UpdateConstructionSystem() 
     {
-        // Tecla F10 OU LB + RB juntos
-        bool inputToggle = CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(0, 57) || 
-                          (CONTROLS::IS_CONTROL_PRESSED(0, 20) && CONTROLS::IS_CONTROL_PRESSED(0, 21));
+        bool inputToggle = false;
+        InvokeNative(HASH_IS_DISABLED_CONTROL_JUST_PRESSED, 0, 57, &inputToggle);
+        
+        bool lbRb = false;
+        InvokeNative(HASH_IS_CONTROL_PRESSED, 0, 20, &lbRb);
+        bool rb = false;
+        InvokeNative(HASH_IS_CONTROL_PRESSED, 0, 21, &rb);
+        if (lbRb && rb) inputToggle = true;
 
         if (inputToggle) ToggleBuildMode();
 
-        if (g_buildMode && ENTITY::DOES_ENTITY_EXIST(g_previewObj)) 
+        if (g_buildMode && g_previewObj != 0) 
         {
-            Ped playerPed = PLAYER::PLAYER_PED_ID();
-            Vector3 pCoords = ENTITY::GET_ENTITY_COORDS(playerPed, TRUE);
-            Vector3 forward = ENTITY::GET_ENTITY_FORWARD_VECTOR(playerPed);
+            uintptr_t playerPed = *(uintptr_t*)PLAYER_PED_PTR;
+            Vector3 pCoords, forward;
+            InvokeNative(HASH_GET_ENTITY_COORDS, playerPed, TRUE, &pCoords);
+            InvokeNative(HASH_GET_ENTITY_FORWARD_VECTOR, playerPed, &forward);
 
-            // Posiciona a 4 metros na frente do jogador
             Vector3 targetPos = { pCoords.x + (forward.x * 4.0f), pCoords.y + (forward.y * 4.0f), pCoords.z };
-            ENTITY::SET_ENTITY_COORDS(g_previewObj, targetPos.x, targetPos.y, targetPos.z, FALSE, FALSE, FALSE, TRUE);
+            InvokeNative(HASH_SET_ENTITY_COORDS, g_previewObj, targetPos.x, targetPos.y, targetPos.z, FALSE, FALSE, FALSE, TRUE);
 
-            // Rotacionar: Q/E ou Analógico Esquerdo
-            if (CONTROLS::IS_CONTROL_PRESSED(0, 44)) g_currentHeading += 2.0f; // Q
-            if (CONTROLS::IS_CONTROL_PRESSED(0, 38)) g_currentHeading -= 2.0f; // E
-            ENTITY::SET_ENTITY_HEADING(g_previewObj, g_currentHeading);
+            bool qPressed = false, ePressed = false;
+            InvokeNative(HASH_IS_CONTROL_PRESSED, 0, 44, &qPressed);
+            InvokeNative(HASH_IS_CONTROL_PRESSED, 0, 38, &ePressed);
+            
+            if (qPressed) g_currentHeading += 2.0f;
+            if (ePressed) g_currentHeading -= 2.0f;
+            InvokeNative(HASH_SET_ENTITY_HEADING, g_previewObj, g_currentHeading);
 
-            // Confirmar: Enter / Botão X
-            if (CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(0, 201) || CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(0, 18)) 
+            bool confirm = false;
+            InvokeNative(HASH_IS_DISABLED_CONTROL_JUST_PRESSED, 0, 201, &confirm);
+            if (!confirm) InvokeNative(HASH_IS_DISABLED_CONTROL_JUST_PRESSED, 0, 18, &confirm);
+
+            if (confirm) 
             {
-                Object finalObj = OBJECT::CREATE_OBJECT(g_currentPropHash, targetPos.x, targetPos.y, targetPos.z, TRUE, TRUE, FALSE);
-                ENTITY::SET_ENTITY_HEADING(finalObj, g_currentHeading);
+                uintptr_t finalObj = 0;
+                InvokeNative(HASH_CREATE_OBJECT, g_currentPropHash, targetPos.x, targetPos.y, targetPos.z, TRUE, TRUE, FALSE, &finalObj);
+                InvokeNative(HASH_SET_ENTITY_HEADING, finalObj, g_currentHeading);
                 
-                OBJECT::DELETE_OBJECT(&g_previewObj);
+                InvokeNative(HASH_DELETE_OBJECT, &g_previewObj);
                 g_previewObj = 0;
                 g_buildMode = false;
 
-                UI::_SET_NOTIFICATION_TEXT_ENTRY("STRING");
-                UI::_ADD_TEXT_COMPONENT_STRING("~g~[CONSTRUÇÃO] Estrutura posicionada!");
-                UI::_DRAW_NOTIFICATION(FALSE, TRUE);
+                InvokeNative(HASH_SET_NOTIFICATION_TEXT_ENTRY, "STRING");
+                InvokeNative(HASH_ADD_TEXT_COMPONENT_STRING, "~g~[CONSTRUÇÃO] Estrutura posicionada!");
+                InvokeNative(HASH_DRAW_NOTIFICATION, FALSE, TRUE);
             }
         }
     }
