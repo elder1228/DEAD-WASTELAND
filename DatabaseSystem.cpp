@@ -1,49 +1,45 @@
-#include <fstream>
-#include <string>
-#include "natives.h"
+#include "generated_offsets.h"
+#include <cstdint>
+#include <cstdio> // XDK usa stdio para file I/O nativo
 
 namespace DeadWastelandXbox 
 {
-    // C++ no Xbox 360 usa salvamento binário/texto direto no drive (hdd0:/ or usbdrive:/)
+    // No XDK, usamos fopen/fprintf para game:\ ou usb:\
     void SaveDatabase() 
     {
-        std::ofstream file("game:\dead_wasteland_data.txt");
-        if (file.is_open()) 
+        FILE* file = fopen("game:\\dead_wasteland_data.txt", "w");
+        if (file != nullptr) 
         {
-            // Salva posição e estado dos recursos do jogador
-            Ped playerPed = PLAYER::PLAYER_PED_ID();
-            Vector3 coords = ENTITY::GET_ENTITY_COORDS(playerPed, TRUE);
+            uintptr_t playerPed = *(uintptr_t*)PLAYER_PED_PTR;
+            float x = 0, y = 0, z = 0;
+            InvokeNative(HASH_GET_ENTITY_COORDS, playerPed, TRUE, &x, &y, &z);
 
-            file << "POS_X=" << coords.x << "\n";
-            file << "POS_Y=" << coords.y << "\n";
-            file << "POS_Z=" << coords.z << "\n";
-            file.close();
+            fprintf(file, "POS_X=%f\n", x);
+            fprintf(file, "POS_Y=%f\n", y);
+            fprintf(file, "POS_Z=%f\n", z);
+            fclose(file);
 
-            UI::_SET_NOTIFICATION_TEXT_ENTRY("STRING");
-            UI::_ADD_TEXT_COMPONENT_STRING("~g~[PERSISTÊNCIA] Dados salvos com sucesso.");
-            UI::_DRAW_NOTIFICATION(FALSE, TRUE);
+            InvokeNative(HASH_SET_NOTIFICATION_TEXT_ENTRY, "STRING");
+            InvokeNative(HASH_ADD_TEXT_COMPONENT_STRING, "~g~[PERSISTÊNCIA] Dados salvos com sucesso.");
+            InvokeNative(HASH_DRAW_NOTIFICATION, FALSE, TRUE);
         }
     }
 
     void LoadDatabase() 
     {
-        std::ifstream file("game:\dead_wasteland_data.txt");
-        if (file.is_open()) 
+        FILE* file = fopen("game:\\dead_wasteland_data.txt", "r");
+        if (file != nullptr) 
         {
-            std::string line;
             float x = 0, y = 0, z = 0;
-            while (std::getline(file, line)) 
-            {
-                if (line.find("POS_X=") == 0) x = std::stof(line.substr(6));
-                if (line.find("POS_Y=") == 0) y = std::stof(line.substr(6));
-                if (line.find("POS_Z=") == 0) z = std::stof(line.substr(6));
-            }
-            file.close();
+            fscanf(file, "POS_X=%f\n", &x);
+            fscanf(file, "POS_Y=%f\n", &y);
+            fscanf(file, "POS_Z=%f\n", &z);
+            fclose(file);
 
             if (x != 0 && y != 0) 
             {
-                Ped playerPed = PLAYER::PLAYER_PED_ID();
-                ENTITY::SET_ENTITY_COORDS(playerPed, x, y, z, FALSE, FALSE, FALSE, TRUE);
+                uintptr_t playerPed = *(uintptr_t*)PLAYER_PED_PTR;
+                InvokeNative(HASH_SET_ENTITY_COORDS, playerPed, x, y, z, FALSE, FALSE, FALSE, TRUE);
             }
         }
     }
