@@ -1,29 +1,43 @@
-#include "natives.h"
+#include "generated_offsets.h"
+#include <cstdint>
 
 namespace DeadWastelandXbox 
 {
     void UpdatePersistenceSystem() 
     {
-        Ped playerPed = PLAYER::PLAYER_PED_ID();
+        uintptr_t playerPed = *(uintptr_t*)PLAYER_PED_PTR;
 
-        // SHIFT + P ou LB + D-Pad Direita
-        bool registerInput = (CONTROLS::IS_CONTROL_PRESSED(0, 21) && CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(0, 199)) ||
-                             (CONTROLS::IS_CONTROL_PRESSED(0, 20) && CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(0, 175));
+        bool shiftP = false, lbRight = false;
+        InvokeNative(HASH_IS_CONTROL_PRESSED, 0, 21, &shiftP);
+        InvokeNative(HASH_IS_DISABLED_CONTROL_JUST_PRESSED, 0, 199, &lbRight);
+        bool ctrlP = false, lbRight2 = false;
+        InvokeNative(HASH_IS_CONTROL_PRESSED, 0, 20, &ctrlP);
+        InvokeNative(HASH_IS_DISABLED_CONTROL_JUST_PRESSED, 0, 175, &lbRight2);
 
-        if (registerInput && PED::IS_PED_IN_ANY_VEHICLE(playerPed, FALSE)) 
+        bool registerInput = (shiftP && lbRight) || (ctrlP && lbRight2);
+
+        if (registerInput) 
         {
-            Vehicle veh = PED::GET_VEHICLE_PED_IS_IN(playerPed, FALSE);
+            bool inVeh = false;
+            InvokeNative(HASH_IS_PED_IN_ANY_VEHICLE, playerPed, FALSE, &inVeh);
 
-            // Registra o veículo para não sumir (Bolinha Roxa 🟣)
-            ENTITY::SET_ENTITY_AS_MISSION_ENTITY(veh, TRUE, TRUE);
-            
-            Blip vehBlip = UI::ADD_BLIP_FOR_ENTITY(veh);
-            UI::SET_BLIP_SPRITE(vehBlip, 225); // Ícone de Veículo
-            UI::SET_BLIP_COLOUR(vehBlip, 7);   // Roxo
+            if (inVeh) 
+            {
+                uintptr_t veh = 0;
+                InvokeNative(HASH_GET_VEHICLE_PED_IS_IN, playerPed, FALSE, &veh);
 
-            UI::_SET_NOTIFICATION_TEXT_ENTRY("STRING");
-            UI::_ADD_TEXT_COMPONENT_STRING("~p~[FROTA] Veículo registrado na Frota Persistente!");
-            UI::_DRAW_NOTIFICATION(FALSE, TRUE);
+                // Registra o veículo (Flag de Mission Entity via Native)
+                InvokeNative(HASH_SET_ENTITY_AS_MISSION_ENTITY, veh, TRUE, TRUE);
+                
+                uintptr_t vehBlip = 0;
+                InvokeNative(HASH_ADD_BLIP_FOR_ENTITY, veh, &vehBlip);
+                InvokeNative(HASH_SET_BLIP_SPRITE, vehBlip, 225);
+                InvokeNative(HASH_SET_BLIP_COLOUR, vehBlip, 7);
+
+                InvokeNative(HASH_SET_NOTIFICATION_TEXT_ENTRY, "STRING");
+                InvokeNative(HASH_ADD_TEXT_COMPONENT_STRING, "~p~[FROTA] Veículo registrado na Frota Persistente!");
+                InvokeNative(HASH_DRAW_NOTIFICATION, FALSE, TRUE);
+            }
         }
     }
 }
