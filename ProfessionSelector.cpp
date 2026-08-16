@@ -1,4 +1,5 @@
 #include "generated_offsets.h"
+#include "xbox_helpers.h"
 #include <cstdint>
 #include <cmath>
 
