@@ -1,38 +1,57 @@
-#include "natives.h"
+#include "generated_offsets.h"
+#include <cstdint>
+#include <cmath>
 
 namespace DeadWastelandXbox 
 {
+    struct Vector3 { float x, y, z; };
+
     void UpdateProfessionSelector() 
     {
-        Ped playerPed = PLAYER::PLAYER_PED_ID();
-        Vector3 pCoords = ENTITY::GET_ENTITY_COORDS(playerPed, TRUE);
+        uintptr_t playerPed = *(uintptr_t*)PLAYER_PED_PTR;
+        Vector3 pCoords;
+        InvokeNative(HASH_GET_ENTITY_COORDS, playerPed, TRUE, &pCoords);
 
-        // Perto de NPC Aliado: E (Teclado) ou D-Pad Direita (Controle)
-        bool interactInput = CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(0, 51) || 
-                             CONTROLS::IS_DISABLED_CONTROL_JUST_PRESSED(0, 175);
+        bool interactInput = false;
+        InvokeNative(HASH_IS_DISABLED_CONTROL_JUST_PRESSED, 0, 51, &interactInput);
+        if (!interactInput) InvokeNative(HASH_IS_DISABLED_CONTROL_JUST_PRESSED, 0, 175, &interactInput);
 
         if (interactInput) 
         {
-            const int maxPeds = 10;
-            Ped nearbyPeds[maxPeds];
-            int found = worldGetAllPeds(nearbyPeds, maxPeds);
+            // Varredura manual do Ped Pool (Bitmask)
+            uintptr_t pedPoolBase = PED_POOL_PTR;
+            if (pedPoolBase == 0) return;
 
-            for (int i = 0; i < found; i++) 
+            void** pedItems = (void**)(pedPoolBase + PED_POOL_ITEMS_OFFSET); 
+            uint32_t* pedBitset = (uint32_t*)(pedPoolBase + PED_POOL_BITSET_OFFSET);
+            int maxPeds = PED_POOL_MAX_ITEMS;
+
+            for (int i = 0; i < maxPeds; i++) 
             {
-                Ped targetPed = nearbyPeds[i];
-                if (targetPed != playerPed && !PED::IS_PED_A_PLAYER(targetPed)) 
-                {
-                    Vector3 npcCoords = ENTITY::GET_ENTITY_COORDS(targetPed, TRUE);
-                    float dist = GAMEPLAY::GET_DISTANCE_BETWEEN_COORDS(pCoords.x, pCoords.y, pCoords.z, npcCoords.x, npcCoords.y, npcCoords.z, TRUE);
+                int index = i / 32;
+                int bit = i % 32;
+                if (!(pedBitset[index] & (1 << bit))) continue;
 
-                    if (dist < 3.0f) 
-                    {
-                        // Atribui profissão via rotação simples
-                        UI::_SET_NOTIFICATION_TEXT_ENTRY("STRING");
-                        UI::_ADD_TEXT_COMPONENT_STRING("~b~[PROFISSÃO] Função atribuída com sucesso ao Aliado!");
-                        UI::_DRAW_NOTIFICATION(FALSE, TRUE);
-                        break;
-                    }
+                uintptr_t targetPed = (uintptr_t)pedItems[i];
+                if (targetPed == 0 || targetPed == playerPed) continue;
+
+                bool isPlayer = false;
+                InvokeNative(HASH_IS_PED_A_PLAYER, targetPed, &isPlayer);
+                if (isPlayer) continue;
+
+                Vector3 npcCoords;
+                InvokeNative(HASH_GET_ENTITY_COORDS, targetPed, TRUE, &npcCoords);
+                
+                float dx = pCoords.x - npcCoords.x;
+                float dy = pCoords.y - npcCoords.y;
+                float dist = sqrtf(dx*dx + dy*dy);
+
+                if (dist < 3.0f) 
+                {
+                    InvokeNative(HASH_SET_NOTIFICATION_TEXT_ENTRY, "STRING");
+                    InvokeNative(HASH_ADD_TEXT_COMPONENT_STRING, "~b~[PROFISSÃO] Função atribuída com sucesso ao Aliado!");
+                    InvokeNative(HASH_DRAW_NOTIFICATION, FALSE, TRUE);
+                    break;
                 }
             }
         }
